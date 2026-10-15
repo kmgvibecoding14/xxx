@@ -1,0 +1,963 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Цены на видеокарты</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #13161b;
+    --panel: #1a1e25;
+    --panel-2: #20252d;
+    --hover: #232933;
+    --border: #2b313b;
+    --text: #e8ebf0;
+    --muted: #8e97a6;
+    --down: #4cc9a0;
+    --up: #ff7b6e;
+    --flat: #8e97a6;
+    --warn: #f2c94c;
+    --accent: #7aa2ff;
+    --nvidia: #76b900;
+    --amd: #ed3b3b;
+    --intel: #3d9bff;
+    --r: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.45 "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    font-variant-numeric: tabular-nums;
+  }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .container { max-width: 1440px; margin: 0 auto; padding: 0 20px; }
+  .muted { color: var(--muted); }
+  .down { color: var(--down); } .up { color: var(--up); } .flat { color: var(--flat); }
+
+  /* Header */
+  .top { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 18px 0 14px; }
+  .top h1 { margin: 0; font-size: 22px; font-weight: 700; }
+  .top .info { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-left: auto; color: var(--muted); font-size: 13px; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 500; border: 1px solid; }
+  .badge.demo { color: var(--warn); border-color: #4a4126; background: #2a2618; }
+  .badge.api { color: var(--down); border-color: #2a4d42; background: #18302a; }
+  .btn {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    padding: 6px 12px; cursor: pointer; color: var(--text);
+  }
+  .btn:hover { background: var(--hover); }
+  .btn:disabled { opacity: .6; cursor: progress; }
+  .warning {
+    display: none; margin-bottom: 12px; padding: 10px 14px; border-radius: 8px;
+    background: #2e2418; border: 1px solid #5a4423; color: #ffd28a;
+  }
+  .warning.show { display: block; }
+
+  /* Summary */
+  .summary { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .stat { background: var(--panel); border: 1px solid var(--border); border-radius: var(--r); padding: 12px 14px; }
+  .stat .v { font-size: 24px; font-weight: 700; line-height: 1.15; }
+  .stat .l { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .stat.wide .v { font-size: 17px; padding-top: 4px; }
+
+  /* Controls */
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 10px; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--panel); }
+  .seg button { background: transparent; border: 0; border-right: 1px solid var(--border); padding: 6px 12px; cursor: pointer; color: var(--muted); white-space: nowrap; }
+  .seg button:last-child { border-right: 0; }
+  .seg button:hover { color: var(--text); }
+  .seg button[aria-pressed="true"] { background: var(--panel-2); color: var(--text); }
+  .seg button .cnt { color: var(--muted); font-size: 12px; margin-left: 4px; }
+  .seg button:focus-visible { outline-offset: -2px; }
+  .search { position: relative; flex: 1 1 220px; max-width: 340px; }
+  .search input {
+    width: 100%; background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); padding: 7px 30px 7px 32px; font: inherit;
+  }
+  .search input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); }
+  .search .clear { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); background: none; border: 0; color: var(--muted); cursor: pointer; padding: 4px 8px; display: none; }
+  .search.has .clear { display: block; }
+  select {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); padding: 7px 10px; font: inherit; cursor: pointer;
+  }
+  .ml-auto { margin-left: auto; }
+
+  .sources { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 10px 0 14px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+  .sources .lbl { color: var(--muted); font-size: 13px; margin-right: 4px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+    background: transparent; border: 1px solid var(--border); border-radius: 999px;
+    padding: 4px 11px; color: var(--muted); font-size: 13px;
+  }
+  .chip .dot { width: 8px; height: 8px; border-radius: 50%; opacity: .35; }
+  .chip[aria-pressed="true"] { color: var(--text); background: var(--panel-2); border-color: #3a4250; }
+  .chip[aria-pressed="true"] .dot { opacity: 1; }
+  .chip:hover { border-color: #4a5260; }
+  .chip .t { font-size: 11px; color: var(--muted); }
+  .sep { width: 1px; height: 20px; background: var(--border); margin: 0 6px; }
+
+  /* Layout */
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 450px; gap: 16px; align-items: start; }
+  .side { position: sticky; top: 12px; max-height: calc(100vh - 24px); overflow-y: auto; scrollbar-width: thin; }
+  @media (max-width: 999px) {
+    .layout { grid-template-columns: minmax(0, 1fr); }
+    .side { position: static; max-height: none; order: -1; }
+    .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .stat.wide { grid-column: span 2; }
+  }
+
+  /* Brand blocks & rows */
+  .block { background: var(--panel); border: 1px solid var(--border); border-radius: var(--r); margin-bottom: 14px; overflow: hidden; }
+  .block-h { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .block-h .mark { width: 4px; height: 18px; border-radius: 2px; }
+  .block-h h2 { margin: 0; font-size: 15px; }
+  .block-h .muted { font-size: 13px; }
+  .row {
+    display: grid; grid-template-columns: minmax(0, 1fr) 96px 190px 170px; gap: 14px; align-items: center;
+    width: 100%; text-align: left; background: transparent; border: 0; border-top: 1px solid var(--border);
+    padding: 10px 14px; cursor: pointer;
+  }
+  .row:first-of-type { border-top: 0; }
+  .row:hover { background: var(--hover); }
+  .row[aria-current="true"] { background: #1f2734; box-shadow: inset 3px 0 0 var(--accent); }
+  .row .name { font-weight: 600; font-size: 15px; }
+  .row .meta { color: var(--muted); font-size: 12px; }
+  .row .price { text-align: right; }
+  .row .price b { font-size: 17px; }
+  .row .price .src { font-size: 12px; color: var(--muted); display: flex; gap: 5px; justify-content: flex-end; align-items: center; }
+  .row .chg { text-align: right; font-size: 13px; white-space: nowrap; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+  @media (max-width: 760px) {
+    .row { grid-template-columns: minmax(0, 1fr) auto; }
+    .row .spark, .row .chg { display: none; }
+  }
+
+  /* Compare table */
+  .tbl-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { padding: 8px 10px; border-top: 1px solid var(--border); text-align: right; white-space: nowrap; }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; border-top: 0; position: sticky; top: 0; background: var(--panel); }
+  th:first-child, td:first-child { text-align: left; }
+  .cmp tbody tr.m { cursor: pointer; }
+  .cmp tbody tr.m:hover td { background: var(--hover); }
+  .cmp tbody tr.m[aria-current="true"] td { background: #1f2734; }
+  .cmp tr.bh td { background: var(--panel-2); font-weight: 600; font-size: 13px; }
+  .cmp td.best { color: var(--down); font-weight: 600; background: rgba(76,201,160,.08); }
+  .cmp td .d { display: block; font-size: 11px; color: var(--muted); }
+  .cmp td.na { color: #59616e; }
+  .cmp th .dot { margin-right: 5px; }
+
+  .empty { background: var(--panel); border: 1px dashed var(--border); border-radius: var(--r); padding: 36px 20px; text-align: center; }
+  .empty h3 { margin: 0 0 6px; }
+  .empty .acts { display: flex; gap: 8px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+
+  /* Side panel */
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--r); padding: 16px; }
+  .panel + .panel { margin-top: 12px; }
+  .panel h3 { margin: 0 0 10px; font-size: 14px; }
+  .p-head .brand { font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+  .p-head h2 { margin: 2px 0 2px; font-size: 20px; }
+  .p-price { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+  .p-price b { font-size: 30px; line-height: 1; }
+  .p-price .where { color: var(--muted); font-size: 13px; width: 100%; display: flex; gap: 6px; align-items: center; }
+  .kv { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
+  .kv div { background: var(--panel-2); border-radius: 8px; padding: 8px 10px; }
+  .kv small { display: block; color: var(--muted); font-size: 11px; }
+  .kv span { font-weight: 600; }
+  .chart-tools { display: flex; gap: 8px; justify-content: space-between; flex-wrap: wrap; margin-bottom: 10px; }
+  .chart { position: relative; }
+  .chart svg { display: block; width: 100%; }
+  .tip {
+    position: absolute; pointer-events: none; background: #0f1216; border: 1px solid #3a4250;
+    border-radius: 8px; padding: 8px 10px; font-size: 12px; min-width: 150px; display: none; z-index: 2;
+    box-shadow: 0 6px 18px rgba(0,0,0,.4);
+  }
+  .tip .t { color: var(--muted); margin-bottom: 4px; }
+  .tip .r { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+  .tip .r span:first-child { display: flex; gap: 6px; align-items: center; }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; font-size: 12px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .ptbl th, .ptbl td { padding: 7px 6px; font-size: 13px; }
+  .ptbl th { background: var(--panel); }
+  .ptbl tr.best td { background: rgba(76,201,160,.08); }
+  .ptbl tr.best td:first-child { box-shadow: inset 3px 0 0 var(--down); }
+  .ptbl .tp { font-size: 11px; color: var(--muted); display: block; }
+  .ptbl td:first-child .nm { display: flex; gap: 6px; align-items: center; }
+  .cmpbox { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .cmpbox div { background: var(--panel-2); border-radius: 8px; padding: 8px 10px; }
+  .cmpbox small { display: block; color: var(--muted); font-size: 11px; }
+  .cmpbox .res { grid-column: span 2; font-size: 13px; }
+  .days { max-height: 340px; overflow-y: auto; }
+  .note { color: var(--muted); font-size: 12px; padding: 22px 0 36px; border-top: 1px solid var(--border); margin-top: 10px; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px);
+    background: #0f1216; border: 1px solid #3a4250; border-radius: 8px; padding: 9px 14px;
+    opacity: 0; transition: .2s; pointer-events: none; z-index: 10;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header class="top">
+    <h1>Цены на видеокарты</h1>
+    <div class="info">
+      <span id="ds-badge" class="badge demo">Демо-данные</span>
+      <span id="ds-time">—</span>
+      <button class="btn" id="refresh" type="button">↻ Обновить</button>
+    </div>
+  </header>
+
+  <div class="warning" id="warning" role="alert"></div>
+
+  <section class="summary" aria-label="Сводка за сутки">
+    <div class="stat"><div class="v" id="s-total">—</div><div class="l">моделей</div></div>
+    <div class="stat"><div class="v down" id="s-down">—</div><div class="l">▼ подешевело за сутки</div></div>
+    <div class="stat"><div class="v up" id="s-up">—</div><div class="l">▲ подорожало за сутки</div></div>
+    <div class="stat"><div class="v flat" id="s-flat">—</div><div class="l">без изменений</div></div>
+    <div class="stat wide"><div class="v" id="s-leader">—</div><div class="l" id="s-leader-l">чаще всех даёт лучшую цену</div></div>
+  </section>
+
+  <div class="controls">
+    <div class="seg" role="group" aria-label="Производитель" id="brand-tabs">
+      <button type="button" data-brand="all" aria-pressed="true">Все<span class="cnt"></span></button>
+      <button type="button" data-brand="nvidia" aria-pressed="false">NVIDIA<span class="cnt"></span></button>
+      <button type="button" data-brand="amd" aria-pressed="false">AMD<span class="cnt"></span></button>
+      <button type="button" data-brand="intel" aria-pressed="false">Intel<span class="cnt"></span></button>
+    </div>
+    <div class="search" id="search-box">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8e97a6" stroke-width="2.4" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+      <input id="search" type="search" placeholder="Поиск модели, например rtx5070" autocomplete="off" aria-label="Поиск модели">
+      <button class="clear" type="button" id="search-clear" aria-label="Очистить поиск">✕</button>
+    </div>
+    <div class="seg ml-auto" role="group" aria-label="Вид списка" id="view-tabs">
+      <button type="button" data-view="list" aria-pressed="true">Список</button>
+      <button type="button" data-view="compare" aria-pressed="false">Сравнение источников</button>
+    </div>
+    <span style="display:inline-flex;gap:8px;align-items:center">
+    <label class="muted" for="sort" style="font-size:13px">Сортировка</label>
+    <select id="sort" autocomplete="off">
+      <option value="price-desc">Цена: по убыванию</option>
+      <option value="price-asc">Цена: по возрастанию</option>
+      <option value="drop">Сначала подешевевшие</option>
+      <option value="spread">Сначала с большим разбросом</option>
+      <option value="name">По названию</option>
+    </select>
+    </span>
+  </div>
+
+  <div class="sources" id="sources" aria-label="Источники цен">
+    <span class="lbl">Источники:</span>
+    <div class="seg" role="group" aria-label="Быстрый выбор источников" id="src-quick">
+      <button type="button" data-quick="all" aria-pressed="true">Все</button>
+      <button type="button" data-quick="aggregator" aria-pressed="false">Только агрегаторы</button>
+      <button type="button" data-quick="shop" aria-pressed="false">Только магазины</button>
+    </div>
+    <span class="sep" aria-hidden="true"></span>
+    <span id="src-chips" style="display:contents"></span>
+  </div>
+
+  <div class="layout">
+    <main id="main" aria-live="polite"></main>
+    <aside class="side" id="side" aria-label="Детали модели"></aside>
+  </div>
+
+  <p class="note" id="note">
+    Цены и история в демо-режиме сгенерированы и не отражают реальный рынок. Для реальных данных укажите адрес прокси-API в <code>CONFIG.apiUrl</code>.
+    Цены указаны без учёта наличия, доставки и скидок.
+  </p>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+/* ============ Настройки ============ */
+const CONFIG = {
+  apiUrl: "",   // адрес собственного прокси-API (JSON по контракту PRD, п. 7.2). Пусто — демо-режим
+  days: 30
+};
+
+/* ============ Справочники ============ */
+const BRANDS = {
+  nvidia: { name: "NVIDIA", color: "#76b900" },
+  amd:    { name: "AMD",    color: "#ed3b3b" },
+  intel:  { name: "Intel",  color: "#3d9bff" }
+};
+const BRAND_ORDER = ["nvidia", "amd", "intel"];
+const PALETTE = ["#ffcc33", "#5aa9ff", "#b58cff", "#ff9640", "#3fd0c9", "#ff6fae", "#6f7dff", "#a3d65c", "#e0e0e0", "#ffa3a3", "#7fe0ff", "#d4b483"];
+
+const DEMO_SOURCES = [
+  { id: "ym",  name: "Яндекс Маркет", short: "Я.Маркет",   type: "aggregator", color: "#ffcc33" },
+  { id: "ek",  name: "E-Katalog",     short: "E-Katalog",  type: "aggregator", color: "#5aa9ff" },
+  { id: "pr",  name: "Price.ru",      short: "Price.ru",   type: "aggregator", color: "#b58cff" },
+  { id: "dns", name: "DNS",           short: "DNS",        type: "shop",       color: "#ff9640" },
+  { id: "cl",  name: "Ситилинк",      short: "Ситилинк",   type: "shop",       color: "#3fd0c9" },
+  { id: "rg",  name: "Регард",        short: "Регард",     type: "shop",       color: "#ff6fae" },
+  { id: "oz",  name: "Ozon",          short: "Ozon",       type: "shop",       color: "#6f7dff" },
+  { id: "ot",  name: "Онлайнтрейд",   short: "Онлайнтрейд", type: "shop",      color: "#a3d65c" }
+];
+
+const DEMO_MODELS = [
+  ["rtx-5090",    "nvidia", "GeForce RTX 50", "GeForce RTX 5090",    32, 289990],
+  ["rtx-5080",    "nvidia", "GeForce RTX 50", "GeForce RTX 5080",    16, 139990],
+  ["rtx-5070-ti", "nvidia", "GeForce RTX 50", "GeForce RTX 5070 Ti", 16,  99990],
+  ["rtx-5070",    "nvidia", "GeForce RTX 50", "GeForce RTX 5070",    12,  63990],
+  ["rtx-5060-ti", "nvidia", "GeForce RTX 50", "GeForce RTX 5060 Ti", 16,  49990],
+  ["rtx-4070-s",  "nvidia", "GeForce RTX 40", "GeForce RTX 4070 Super", 12, 67990],
+  ["rtx-4060-ti", "nvidia", "GeForce RTX 40", "GeForce RTX 4060 Ti",  8,  43990],
+  ["rtx-4060",    "nvidia", "GeForce RTX 40", "GeForce RTX 4060",     8,  33990],
+  ["rtx-3060",    "nvidia", "GeForce RTX 30", "GeForce RTX 3060",    12,  29990],
+  ["rx-9070-xt",  "amd",    "Radeon RX 9000", "Radeon RX 9070 XT",   16,  74990],
+  ["rx-9070",     "amd",    "Radeon RX 9000", "Radeon RX 9070",      16,  65990],
+  ["rx-9060-xt",  "amd",    "Radeon RX 9000", "Radeon RX 9060 XT",   16,  41990],
+  ["rx-7900-xtx", "amd",    "Radeon RX 7000", "Radeon RX 7900 XTX",  24, 104990],
+  ["rx-7800-xt",  "amd",    "Radeon RX 7000", "Radeon RX 7800 XT",   16,  54990],
+  ["rx-7700-xt",  "amd",    "Radeon RX 7000", "Radeon RX 7700 XT",   12,  44990],
+  ["rx-7600",     "amd",    "Radeon RX 7000", "Radeon RX 7600",       8,  28990],
+  ["arc-b580",    "intel",  "Arc B-series",   "Arc B580",            12,  29990],
+  ["arc-b570",    "intel",  "Arc B-series",   "Arc B570",            10,  24990],
+  ["arc-a770",    "intel",  "Arc A-series",   "Arc A770",            16,  31990],
+  ["arc-a750",    "intel",  "Arc A-series",   "Arc A750",             8,  22990]
+];
+
+/* ============ Утилиты ============ */
+const $ = (s, r = document) => r.querySelector(s);
+const nf = new Intl.NumberFormat("ru-RU");
+const pf = new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const ESC = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+const esc = v => String(v == null ? "" : v).replace(/[&<>"']/g, c => ESC[c]);
+const rub = v => nf.format(Math.round(v)) + " ₽";
+const sign = v => (v > 0 ? "+" : v < 0 ? "−" : "");
+const srub = v => sign(v) + nf.format(Math.abs(Math.round(v))) + " ₽";
+const spct = v => sign(v) + pf.format(Math.abs(v)) + "%";
+const cls = v => (v < 0 ? "down" : v > 0 ? "up" : "flat");
+const arrow = v => (v < 0 ? "▼" : v > 0 ? "▲" : "●");
+const norm = s => String(s).toLowerCase().replace(/[\s\-_]+/g, "");
+
+function changeHTML(abs, pct) {
+  if (abs == null) return '<span class="flat">нет данных</span>';
+  if (abs === 0) return '<span class="flat">● 0 ₽ (0%)</span>';
+  return `<span class="${cls(abs)}">${arrow(abs)} ${srub(abs)} (${spct(pct)})</span>`;
+}
+
+function isoDate(d) {
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+function parseDate(s) { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); }
+const dShort = s => parseDate(s).toLocaleDateString("ru-RU", { day: "numeric", month: "short" }).replace(".", "");
+const dLong = s => parseDate(s).toLocaleDateString("ru-RU", { weekday: "short", day: "numeric", month: "long" });
+
+function hashStr(s) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+function rng(seed) {
+  return function () {
+    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const roundPrice = v => Math.max(990, Math.round(v / 100) * 100 - 10);
+
+/* ============ Демо-данные (F-60) ============ */
+function makeDemo() {
+  const days = CONFIG.days;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const dates = [];
+  for (let i = days - 1; i >= 0; i--) { const d = new Date(today); d.setDate(d.getDate() - i); dates.push(isoDate(d)); }
+
+  const models = DEMO_MODELS.map(([id, brand, series, name, vram, base]) => {
+    const r = rng(hashStr(id));
+    // выбор источников: минимум 1 агрегатор и 1 магазин, всего 4–8
+    const aggs = DEMO_SOURCES.filter(s => s.type === "aggregator").map(s => s.id);
+    const shops = DEMO_SOURCES.filter(s => s.type === "shop").map(s => s.id);
+    const pick = [aggs[Math.floor(r() * aggs.length)], shops[Math.floor(r() * shops.length)]];
+    const rest = DEMO_SOURCES.map(s => s.id).filter(x => !pick.includes(x)).sort(() => r() - 0.5);
+    const k = 4 + Math.floor(r() * 5);
+    const chosen = DEMO_SOURCES.map(s => s.id).filter(x => pick.concat(rest.slice(0, k - 2)).includes(x));
+
+    // рыночный тренд модели
+    const bias = (r() - 0.6) * 0.004;
+    const market = [];
+    let m = base * (1 + (r() - 0.5) * 0.06);
+    for (let d = 0; d < days; d++) { m *= 1 + bias + (r() - 0.5) * 0.012; market.push(m); }
+
+    const sources = chosen.map(sid => {
+      const src = DEMO_SOURCES.find(s => s.id === sid);
+      const f = 1 + (src.type === "aggregator" ? -0.012 : 0.008) + (r() - 0.5) * 0.07;
+      const changeProb = 0.25 + r() * 0.3;
+      let price = roundPrice(market[0] * f);
+      const history = dates.map((date, d) => {
+        if (d > 0 && r() < changeProb) price = roundPrice(market[d] * f * (1 + (r() - 0.5) * 0.025));
+        return { date, price };
+      });
+      return { id: sid, history };
+    });
+    return { id, brand, series, name, vram, sources };
+  });
+  return { sources: DEMO_SOURCES.map(s => ({ ...s })), models };
+}
+
+/* ============ Нормализация данных API (F-61) ============ */
+function normalize(json) {
+  if (!json || !Array.isArray(json.models)) throw new Error("В ответе нет массива models");
+  const sources = (Array.isArray(json.sources) ? json.sources : []).map((s, i) => ({
+    id: String(s.id),
+    name: String(s.name || s.id),
+    short: String(s.short || s.name || s.id),
+    type: s.type === "shop" ? "shop" : "aggregator",
+    color: /^#[0-9a-f]{3,8}$/i.test(s.color || "") ? s.color : PALETTE[i % PALETTE.length]
+  }));
+  const cleanHist = h => (Array.isArray(h) ? h : [])
+    .filter(p => p && /^\d{4}-\d{2}-\d{2}$/.test(p.date) && isFinite(p.price) && p.price > 0)
+    .map(p => ({ date: p.date, price: Math.round(Number(p.price)) }))
+    .sort((a, b) => (a.date < b.date ? -1 : 1));
+
+  const models = json.models.map(m => {
+    let offers = Array.isArray(m.sources) ? m.sources : null;
+    if (!offers && Array.isArray(m.history)) {
+      // обратная совместимость: одна история без sources
+      if (!sources.find(s => s.id === "_single")) sources.push({ id: "_single", name: "Источник", short: "Источник", type: "aggregator", color: PALETTE[sources.length % PALETTE.length] });
+      offers = [{ id: "_single", history: m.history }];
+    }
+    offers = (offers || []).map(o => ({ id: String(o.id), history: cleanHist(o.history) })).filter(o => o.history.length);
+    offers.forEach(o => {
+      if (!sources.find(s => s.id === o.id)) sources.push({ id: o.id, name: o.id, short: o.id, type: "aggregator", color: PALETTE[sources.length % PALETTE.length] });
+    });
+    return {
+      id: String(m.id), brand: BRANDS[m.brand] ? m.brand : "nvidia",
+      series: String(m.series || ""), name: String(m.name || m.id),
+      vram: Number(m.vram) || null, sources: offers
+    };
+  });
+  return { sources, models };
+}
+
+/* ============ Состояние ============ */
+let DATA = { sources: [], models: [] };
+let SRC = {};          // id → source
+let CALC = new Map();  // id модели → расчёт для выбранных источников
+const state = {
+  brand: "all", q: "", view: "list", sort: "price-desc",
+  sel: new Set(), model: null, period: 30, chart: "best"
+};
+
+/* ============ Расчёты (п. 7.1) ============ */
+function calcModel(m) {
+  const offers = m.sources.filter(o => state.sel.has(o.id) && o.history.length).map(o => {
+    const map = {};
+    o.history.forEach(p => { map[p.date] = p.price; });
+    const n = o.history.length;
+    return { id: o.id, map, last: o.history[n - 1].price, prev: n > 1 ? o.history[n - 2].price : null, lastDate: o.history[n - 1].date };
+  });
+  if (!offers.length) return null;
+
+  const dateSet = new Set();
+  offers.forEach(o => Object.keys(o.map).forEach(d => dateSet.add(d)));
+  const dates = [...dateSet].sort();
+  const best = dates.map(date => {
+    let price = Infinity, src = null;
+    offers.forEach(o => { const p = o.map[date]; if (p != null && p < price) { price = p; src = o.id; } });
+    return { date, price, src };
+  });
+  const n = best.length;
+  const cur = best[n - 1];
+  const prev = n > 1 ? best[n - 2] : null;
+  const ch = prev ? cur.price - prev.price : null;
+  const chPct = prev ? (ch / prev.price) * 100 : null;
+
+  const lasts = offers.map(o => o.last);
+  const spread = Math.max(...lasts) - Math.min(...lasts);
+  const spreadPct = (spread / cur.price) * 100;
+
+  return { model: m, offers, dates, best, cur, ch, chPct, spread, spreadPct };
+}
+
+function recalc() {
+  CALC = new Map();
+  DATA.models.forEach(m => { const c = calcModel(m); if (c) CALC.set(m.id, c); });
+}
+
+function matchesSearch(m) {
+  if (!state.q) return true;
+  const q = norm(state.q);
+  return norm(m.name).includes(q) || norm(m.series).includes(q) || norm(BRANDS[m.brand].name + m.name).includes(q);
+}
+
+function visibleCalcs() {
+  const list = [...CALC.values()].filter(c => (state.brand === "all" || c.model.brand === state.brand) && matchesSearch(c.model));
+  const by = {
+    "price-desc": (a, b) => b.cur.price - a.cur.price,
+    "price-asc": (a, b) => a.cur.price - b.cur.price,
+    "drop": (a, b) => (a.chPct ?? 0) - (b.chPct ?? 0) || b.cur.price - a.cur.price,
+    "spread": (a, b) => b.spreadPct - a.spreadPct,
+    "name": (a, b) => a.model.name.localeCompare(b.model.name, "ru", { numeric: true })
+  }[state.sort];
+  return list.sort(by);
+}
+
+/* ============ Отрисовка: шапка и сводка ============ */
+function renderSummary() {
+  const all = [...CALC.values()];
+  let down = 0, up = 0, flat = 0;
+  const wins = {};
+  all.forEach(c => {
+    if (c.ch < 0) down++; else if (c.ch > 0) up++; else flat++;
+    wins[c.cur.src] = (wins[c.cur.src] || 0) + 1;
+  });
+  $("#s-total").textContent = all.length;
+  $("#s-down").textContent = down;
+  $("#s-up").textContent = up;
+  $("#s-flat").textContent = flat;
+  const leader = Object.entries(wins).sort((a, b) => b[1] - a[1])[0];
+  if (leader) {
+    const s = SRC[leader[0]];
+    $("#s-leader").innerHTML = `<span class="dot" style="background:${esc(s.color)}"></span> ${esc(s.name)}`;
+    $("#s-leader-l").textContent = `чаще всех даёт лучшую цену: ${leader[1]} из ${all.length} моделей`;
+  } else {
+    $("#s-leader").textContent = "—";
+  }
+}
+
+function renderBrandTabs() {
+  const counts = { all: 0, nvidia: 0, amd: 0, intel: 0 };
+  CALC.forEach(c => { if (matchesSearch(c.model)) { counts.all++; counts[c.model.brand]++; } });
+  document.querySelectorAll("#brand-tabs button").forEach(b => {
+    b.setAttribute("aria-pressed", b.dataset.brand === state.brand);
+    $(".cnt", b).textContent = counts[b.dataset.brand];
+  });
+}
+
+function buildChips() {
+  $("#src-chips").innerHTML = DATA.sources.map(s => `
+    <button type="button" class="chip" data-src="${esc(s.id)}" aria-pressed="false" title="${s.type === "shop" ? "Магазин" : "Агрегатор"}">
+      <span class="dot" style="background:${esc(s.color)}"></span>${esc(s.name)}
+    </button>`).join("");
+}
+
+function updateChips() {
+  document.querySelectorAll("#src-chips .chip").forEach(b => b.setAttribute("aria-pressed", state.sel.has(b.dataset.src)));
+  const ids = DATA.sources.map(s => s.id);
+  const of = t => ids.filter(id => SRC[id].type === t);
+  const same = arr => arr.length === state.sel.size && arr.every(id => state.sel.has(id));
+  const mode = same(ids) ? "all" : same(of("aggregator")) ? "aggregator" : same(of("shop")) ? "shop" : "";
+  document.querySelectorAll("#src-quick button").forEach(b => b.setAttribute("aria-pressed", b.dataset.quick === mode));
+}
+
+/* ============ Список и сравнение ============ */
+function sparkline(c) {
+  const pts = c.best.slice(-30).map(p => p.price);
+  if (pts.length < 2) return "";
+  const W = 90, H = 28, lo = Math.min(...pts), hi = Math.max(...pts), span = hi - lo || 1;
+  const xy = pts.map((v, i) => `${(i / (pts.length - 1) * W).toFixed(1)},${(2 + (hi - v) / span * (H - 4)).toFixed(1)}`);
+  const trend = pts[pts.length - 1] - pts[0];
+  const col = trend < 0 ? "#4cc9a0" : trend > 0 ? "#ff7b6e" : "#8e97a6";
+  const last = xy[xy.length - 1].split(",");
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true">
+    <polyline fill="none" stroke="${col}" stroke-opacity=".8" stroke-width="1.5" stroke-linejoin="round" points="${xy.join(" ")}"/>
+    <circle cx="${last[0]}" cy="${last[1]}" r="2.5" fill="${col}"/></svg>`;
+}
+
+function groupByBrand(list) {
+  return BRAND_ORDER.map(b => ({ brand: b, items: list.filter(c => c.model.brand === b) })).filter(g => g.items.length);
+}
+
+function emptyHTML() {
+  const parts = [];
+  if (state.q) parts.push(`измените запрос «${esc(state.q)}»`);
+  if (state.brand !== "all") parts.push("выберите «Все» производители");
+  if (state.sel.size < DATA.sources.length) parts.push("включите больше источников");
+  return `<div class="empty">
+    <h3>Ничего не найдено</h3>
+    <p class="muted">${parts.length ? "Попробуйте " + parts.join(", ") + "." : "Нет данных для отображения."}</p>
+    <div class="acts">
+      ${state.q ? '<button class="btn" type="button" data-act="clear-search">Сбросить поиск</button>' : ""}
+      ${state.brand !== "all" ? '<button class="btn" type="button" data-act="all-brands">Все производители</button>' : ""}
+      ${state.sel.size < DATA.sources.length ? '<button class="btn" type="button" data-act="all-sources">Все источники</button>' : ""}
+    </div></div>`;
+}
+
+function renderList(list) {
+  return groupByBrand(list).map(g => {
+    const B = BRANDS[g.brand];
+    return `<section class="block">
+      <div class="block-h"><span class="mark" style="background:${B.color}"></span><h2>${B.name}</h2><span class="muted">${g.items.length} ${plural(g.items.length, "модель", "модели", "моделей")}</span></div>
+      ${g.items.map(c => {
+        const m = c.model, s = SRC[c.cur.src];
+        return `<button type="button" class="row" data-model="${esc(m.id)}" aria-current="${state.model === m.id}">
+          <span><span class="name">${esc(m.name)}</span><br>
+            <span class="meta">${esc(m.series)}${m.vram ? " · " + m.vram + " ГБ" : ""} · ${c.offers.length} ${plural(c.offers.length, "источник", "источника", "источников")}</span></span>
+          <span class="spark">${sparkline(c)}</span>
+          <span class="price"><b>${rub(c.cur.price)}</b><span class="src"><span class="dot" style="background:${esc(s.color)}"></span>${esc(s.short)}</span></span>
+          <span class="chg">${changeHTML(c.ch, c.chPct)}<br><span class="muted" style="font-size:12px">за сутки</span></span>
+        </button>`;
+      }).join("")}
+    </section>`;
+  }).join("");
+}
+
+function renderCompare(list) {
+  const cols = DATA.sources.filter(s => state.sel.has(s.id));
+  const head = `<tr><th>Модель</th>${cols.map(s => `<th><span class="dot" style="background:${esc(s.color)}"></span>${esc(s.short)}</th>`).join("")}<th>Разброс</th></tr>`;
+  const body = groupByBrand(list).map(g => {
+    const B = BRANDS[g.brand];
+    return `<tr class="bh"><td colspan="${cols.length + 2}"><span class="dot" style="background:${B.color};margin-right:6px"></span>${B.name}</td></tr>` +
+      g.items.map(c => {
+        const best = c.cur.price;
+        const cells = cols.map(s => {
+          const o = c.offers.find(x => x.id === s.id);
+          if (!o) return '<td class="na" title="Нет предложения">–</td>';
+          if (o.last === best) return `<td class="best">${rub(o.last)}<span class="d">лучшая</span></td>`;
+          return `<td>${rub(o.last)}<span class="d">+${pf.format((o.last - best) / best * 100)}%</span></td>`;
+        }).join("");
+        return `<tr class="m" data-model="${esc(c.model.id)}" aria-current="${state.model === c.model.id}" tabindex="0">
+          <td><b>${esc(c.model.name)}</b></td>${cells}
+          <td>${rub(c.spread)}<span class="d">${pf.format(c.spreadPct)}%</span></td></tr>`;
+      }).join("");
+  }).join("");
+  return `<div class="block"><div class="tbl-wrap"><table class="cmp">
+    <thead>${head}</thead><tbody>${body}</tbody></table></div></div>`;
+}
+
+function plural(n, one, few, many) {
+  const a = Math.abs(n) % 100, b = a % 10;
+  if (a > 10 && a < 20) return many;
+  if (b > 1 && b < 5) return few;
+  if (b === 1) return one;
+  return many;
+}
+
+function renderMain() {
+  const list = visibleCalcs();
+  document.querySelectorAll("#view-tabs button").forEach(b => b.setAttribute("aria-pressed", b.dataset.view === state.view));
+  $("#main").innerHTML = !list.length ? emptyHTML() : state.view === "compare" ? renderCompare(list) : renderList(list);
+  return list;
+}
+
+/* ============ Панель модели ============ */
+function renderSide() {
+  const c = CALC.get(state.model);
+  const side = $("#side");
+  if (!c) {
+    side.innerHTML = `<div class="panel"><p class="muted">Выберите модель в списке, чтобы увидеть детали.</p></div>`;
+    return;
+  }
+  const m = c.model, B = BRANDS[m.brand], s = SRC[c.cur.src];
+  const per = c.best.slice(-state.period);
+  const lo = Math.min(...per.map(p => p.price)), hi = Math.max(...per.map(p => p.price));
+  const pch = per[per.length - 1].price - per[0].price;
+  const ppct = pch / per[0].price * 100;
+
+  // таблица источников (F-33)
+  const offers = [...c.offers].sort((a, b) => a.last - b.last);
+  const srcRows = offers.map(o => {
+    const S = SRC[o.id], diff = o.last - c.cur.price, dch = o.prev != null ? o.last - o.prev : null;
+    return `<tr class="${diff === 0 ? "best" : ""}">
+      <td><span class="nm"><span class="dot" style="background:${esc(S.color)}"></span>${esc(S.name)}</span><span class="tp">${S.type === "shop" ? "магазин" : "агрегатор"}</span></td>
+      <td><b>${rub(o.last)}</b></td>
+      <td>${diff === 0 ? '<span class="down">лучшая</span>' : `<span class="up">+${nf.format(diff)} ₽</span><span class="tp">+${pf.format(diff / c.cur.price * 100)}%</span>`}</td>
+      <td>${dch == null ? "—" : dch === 0 ? '<span class="flat">0 ₽</span>' : `<span class="${cls(dch)}">${arrow(dch)} ${srub(dch)}</span>`}</td>
+    </tr>`;
+  }).join("");
+
+  // агрегаторы vs магазины (F-34)
+  let aggShop = "";
+  const selTypes = new Set([...state.sel].map(id => SRC[id] && SRC[id].type));
+  if (selTypes.has("aggregator") && selTypes.has("shop")) {
+    const minOf = t => { const a = c.offers.filter(o => SRC[o.id].type === t).map(o => o.last); return a.length ? Math.min(...a) : null; };
+    const ag = minOf("aggregator"), sh = minOf("shop");
+    let res;
+    if (ag == null || sh == null) res = `<span class="muted">Модель есть только в ${ag == null ? "магазинах" : "агрегаторах"} из выбранных.</span>`;
+    else {
+      const d = sh - ag, p = d / ag * 100;
+      res = d === 0 ? "Минимальные цены магазинов и агрегаторов совпадают."
+        : `Магазины <b class="${d > 0 ? "up" : "down"}">${d > 0 ? "дороже" : "дешевле"}</b> агрегаторов на <b>${rub(Math.abs(d))}</b> (${pf.format(Math.abs(p))}%).`;
+    }
+    aggShop = `<div class="cmpbox">
+      <div><small>Мин. у агрегаторов</small><b>${ag == null ? "—" : rub(ag)}</b></div>
+      <div><small>Мин. в магазинах</small><b>${sh == null ? "—" : rub(sh)}</b></div>
+      <div class="res">${res}</div></div>`;
+  }
+
+  // по дням (F-44)
+  const startIdx = c.best.length - per.length;
+  const dayRows = per.map((p, i) => {
+    const prev = c.best[startIdx + i - 1];
+    const d = prev ? p.price - prev.price : null;
+    const S = SRC[p.src];
+    return `<tr><td>${esc(dLong(p.date))}</td><td><b>${rub(p.price)}</b></td>
+      <td>${d == null ? "—" : d === 0 ? '<span class="flat">0 ₽</span>' : `<span class="${cls(d)}">${arrow(d)} ${srub(d)}</span>`}</td>
+      <td><span class="nm" style="display:inline-flex;gap:6px;align-items:center"><span class="dot" style="background:${esc(S.color)}"></span>${esc(S.short)}</span></td></tr>`;
+  }).reverse().join("");
+
+  side.innerHTML = `
+    <div class="panel p-head">
+      <div class="brand" style="color:${B.color}">${B.name} · ${esc(m.series)}</div>
+      <h2>${esc(m.name)}</h2>
+      <div class="muted" style="font-size:13px">${m.vram ? m.vram + " ГБ · " : ""}${c.offers.length} ${plural(c.offers.length, "источник", "источника", "источников")} из выбранных</div>
+      <div class="p-price">
+        <b>${rub(c.cur.price)}</b>
+        <span>${changeHTML(c.ch, c.chPct)} <span class="muted" style="font-size:12px">за сутки</span></span>
+        <span class="where">Лучшая цена: <span class="dot" style="background:${esc(s.color)}"></span>${esc(s.name)}</span>
+      </div>
+      <div class="kv">
+        <div><small>Минимум за ${state.period} дн.</small><span>${rub(lo)}</span></div>
+        <div><small>Максимум за ${state.period} дн.</small><span>${rub(hi)}</span></div>
+        <div><small>Изменение за ${state.period} дн.</small><span class="${cls(pch)}">${pch === 0 ? "0%" : spct(ppct)}</span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="chart-tools">
+        <div class="seg" role="group" aria-label="Тип графика">
+          <button type="button" data-chart="best" aria-pressed="${state.chart === "best"}">Лучшая цена</button>
+          <button type="button" data-chart="sources" aria-pressed="${state.chart === "sources"}">По источникам</button>
+        </div>
+        <div class="seg" role="group" aria-label="Период">
+          ${[7, 14, 30].map(p => `<button type="button" data-period="${p}" aria-pressed="${state.period === p}">${p} дн.</button>`).join("")}
+        </div>
+      </div>
+      <div class="chart" id="chart"><div class="tip" id="tip"></div></div>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Цены в источниках</h3>
+      <div class="tbl-wrap"><table class="ptbl">
+        <thead><tr><th>Источник</th><th>Цена</th><th>К лучшей</th><th>За сутки</th></tr></thead>
+        <tbody>${srcRows}</tbody></table></div>
+      ${aggShop}
+    </div>
+
+    <div class="panel">
+      <h3>Лучшая цена по дням</h3>
+      <div class="tbl-wrap days"><table class="ptbl">
+        <thead><tr><th>Дата</th><th>Цена</th><th>Изменение</th><th>Где дешевле</th></tr></thead>
+        <tbody>${dayRows}</tbody></table></div>
+    </div>`;
+  drawChart();
+}
+
+/* ============ График (F-42, F-43) ============ */
+function drawChart() {
+  const c = CALC.get(state.model), wrap = $("#chart");
+  if (!c || !wrap) return;
+  const tip = $("#tip");
+  const W = Math.max(280, wrap.clientWidth), H = 220;
+  const P = { l: 62, r: 10, t: 10, b: 24 };
+  const dates = c.dates.slice(-state.period);
+  const bestBy = Object.fromEntries(c.best.map(b => [b.date, b]));
+  const series = state.chart === "best"
+    ? [{ id: "best", color: "#4cc9a0", width: 2.5, vals: dates.map(d => bestBy[d].price) }]
+    : c.offers.map(o => ({ id: o.id, color: SRC[o.id].color, width: 1.8, vals: dates.map(d => o.map[d] ?? null) }));
+
+  const all = series.flatMap(s => s.vals.filter(v => v != null));
+  let lo = Math.min(...all), hi = Math.max(...all);
+  if (lo === hi) { lo -= 1000; hi += 1000; }
+  const pad = (hi - lo) * 0.08; lo -= pad; hi += pad;
+  const n = dates.length;
+  const X = i => P.l + (n === 1 ? 0 : i * (W - P.l - P.r) / (n - 1));
+  const Y = v => P.t + (hi - v) / (hi - lo) * (H - P.t - P.b);
+
+  let g = "";
+  for (let k = 0; k <= 4; k++) {
+    const v = lo + (hi - lo) * k / 4, y = Y(v);
+    g += `<line x1="${P.l}" x2="${W - P.r}" y1="${y}" y2="${y}" stroke="#2b313b"/>`;
+    g += `<text x="${P.l - 8}" y="${y + 4}" fill="#8e97a6" font-size="11" text-anchor="end">${nf.format(Math.round(v / 100) * 100)}</text>`;
+  }
+  const lbl = [0, Math.floor((n - 1) / 2), n - 1].filter((v, i, a) => a.indexOf(v) === i);
+  lbl.forEach(i => {
+    const anchor = i === 0 ? "start" : i === n - 1 ? "end" : "middle";
+    g += `<text x="${X(i)}" y="${H - 6}" fill="#8e97a6" font-size="11" text-anchor="${anchor}">${esc(dShort(dates[i]))}</text>`;
+  });
+
+  series.forEach(s => {
+    let d = "", pen = false;
+    s.vals.forEach((v, i) => {
+      if (v == null) { pen = false; return; }
+      d += (pen ? "L" : "M") + X(i).toFixed(1) + "," + Y(v).toFixed(1); pen = true;
+    });
+    if (state.chart === "best") {
+      const area = d + `L${X(n - 1)},${H - P.b}L${X(0)},${H - P.b}Z`;
+      g += `<path d="${area}" fill="${s.color}" fill-opacity=".08"/>`;
+    }
+    g += `<path d="${d}" fill="none" stroke="${esc(s.color)}" stroke-width="${s.width}" stroke-linejoin="round" stroke-linecap="round"/>`;
+  });
+
+  g += `<line id="hl" x1="0" x2="0" y1="${P.t}" y2="${H - P.b}" stroke="#4a5260" stroke-dasharray="3 3" visibility="hidden"/>`;
+  g += `<g id="hd"></g>`;
+  g += `<rect x="${P.l}" y="0" width="${W - P.l - P.r}" height="${H}" fill="transparent" id="hov"/>`;
+
+  wrap.querySelectorAll("svg").forEach(e => e.remove());
+  wrap.insertAdjacentHTML("afterbegin", `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="График цены ${esc(c.model.name)} за ${state.period} дней">${g}</svg>`);
+
+  $("#legend").innerHTML = state.chart === "best"
+    ? `<span><span class="dot" style="background:#4cc9a0"></span>Лучшая цена среди выбранных источников</span>`
+    : series.map(s => `<span><span class="dot" style="background:${esc(s.color)}"></span>${esc(SRC[s.id].short)}</span>`).join("");
+
+  const svg = wrap.querySelector("svg"), hl = $("#hl", svg), hd = $("#hd", svg);
+  function show(i) {
+    const date = dates[i], x = X(i);
+    hl.setAttribute("x1", x); hl.setAttribute("x2", x); hl.setAttribute("visibility", "visible");
+    hd.innerHTML = series.filter(s => s.vals[i] != null)
+      .map(s => `<circle cx="${x}" cy="${Y(s.vals[i])}" r="4" fill="${esc(s.color)}" stroke="#13161b" stroke-width="2"/>`).join("");
+    let html = `<div class="t">${esc(dLong(date))}</div>`;
+    if (state.chart === "best") {
+      const b = bestBy[date], gi = c.dates.indexOf(date), pb = gi > 0 ? bestBy[c.dates[gi - 1]] : null;
+      const d = pb ? b.price - pb.price : null;
+      html += `<div style="font-size:15px;font-weight:700">${rub(b.price)}</div>
+        <div class="r"><span><span class="dot" style="background:${esc(SRC[b.src].color)}"></span>${esc(SRC[b.src].name)}</span></div>
+        <div style="margin-top:3px">${d == null ? "" : changeHTML(d, d / pb.price * 100) + ' <span class="muted">к пред. дню</span>'}</div>`;
+    } else {
+      const rows = series.filter(s => s.vals[i] != null).sort((a, b) => a.vals[i] - b.vals[i]);
+      html += rows.map((s, k) => `<div class="r"><span><span class="dot" style="background:${esc(s.color)}"></span>${esc(SRC[s.id].short)}</span>
+        <b class="${k === 0 ? "down" : ""}">${rub(s.vals[i])}</b></div>`).join("");
+    }
+    tip.innerHTML = html;
+    tip.style.display = "block";
+    const tw = tip.offsetWidth;
+    tip.style.left = (x + 14 + tw > W ? x - 14 - tw : x + 14) + "px";
+    tip.style.top = "8px";
+  }
+  svg.addEventListener("mousemove", e => {
+    const r = svg.getBoundingClientRect();
+    const x = (e.clientX - r.left) * (W / r.width);
+    const i = Math.max(0, Math.min(n - 1, Math.round((x - P.l) / ((W - P.l - P.r) / Math.max(1, n - 1)))));
+    show(i);
+  });
+  svg.addEventListener("mouseleave", () => {
+    tip.style.display = "none"; hl.setAttribute("visibility", "hidden"); hd.innerHTML = "";
+  });
+}
+
+/* ============ Общий рендер ============ */
+function render() {
+  recalc();
+  renderSummary();
+  renderBrandTabs();
+  updateChips();
+  const list = renderMain();
+  if (!CALC.has(state.model)) {
+    state.model = list.length ? list[0].model.id : (CALC.size ? CALC.keys().next().value : null);
+    if (state.model) markCurrent();
+  }
+  renderSide();
+}
+
+function markCurrent() {
+  document.querySelectorAll("[data-model]").forEach(el => el.setAttribute("aria-current", el.dataset.model === state.model));
+}
+
+function toast(msg) {
+  const t = $("#toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+/* ============ Загрузка данных (F-60–F-64) ============ */
+async function load() {
+  const btn = $("#refresh");
+  btn.disabled = true; btn.textContent = "Обновление…";
+  let mode = "demo", warn = "";
+  try {
+    if (CONFIG.apiUrl) {
+      try {
+        const res = await fetch(CONFIG.apiUrl, { headers: { Accept: "application/json" }, cache: "no-store" });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        DATA = normalize(await res.json());
+        mode = "api";
+      } catch (e) {
+        DATA = makeDemo();
+        warn = "Не удалось получить данные из API (" + e.message + "). Показаны демо-данные.";
+      }
+    } else {
+      DATA = makeDemo();
+    }
+  } finally {
+    btn.disabled = false; btn.textContent = "↻ Обновить";
+  }
+  SRC = Object.fromEntries(DATA.sources.map(s => [s.id, s]));
+
+  // сохраняем выбор источников, если они есть в новых данных
+  const ids = DATA.sources.map(s => s.id);
+  const kept = [...state.sel].filter(id => ids.includes(id));
+  state.sel = new Set(kept.length ? kept : ids);
+
+  $("#ds-badge").className = "badge " + mode;
+  $("#ds-badge").textContent = mode === "api" ? "API" : "Демо-данные";
+  $("#ds-time").textContent = "обновлено " + new Date().toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+  $("#warning").textContent = warn;
+  $("#warning").classList.toggle("show", !!warn);
+  buildChips();
+  render();
+}
+
+/* ============ События ============ */
+document.addEventListener("click", e => {
+  const t = e.target.closest("button, tr[data-model]");
+  if (!t) return;
+
+  if (t.dataset.model) { state.model = t.dataset.model; markCurrent(); renderSide(); return; }
+  if (t.dataset.brand) { state.brand = t.dataset.brand; renderBrandTabs(); renderMain(); return; }
+  if (t.dataset.view) { state.view = t.dataset.view; renderMain(); return; }
+  if (t.dataset.period) { state.period = Number(t.dataset.period); renderSide(); return; }
+  if (t.dataset.chart) { state.chart = t.dataset.chart; renderSide(); return; }
+
+  if (t.dataset.src) {
+    const id = t.dataset.src;
+    if (state.sel.has(id)) {
+      if (state.sel.size === 1) { toast("Нельзя отключить последний источник"); return; }
+      state.sel.delete(id);
+    } else state.sel.add(id);
+    render(); return;
+  }
+  if (t.dataset.quick) {
+    const q = t.dataset.quick;
+    state.sel = new Set(DATA.sources.filter(s => q === "all" || s.type === q).map(s => s.id));
+    render(); return;
+  }
+  switch (t.dataset.act) {
+    case "clear-search": setSearch(""); break;
+    case "all-brands": state.brand = "all"; renderBrandTabs(); renderMain(); break;
+    case "all-sources": state.sel = new Set(DATA.sources.map(s => s.id)); render(); break;
+  }
+});
+
+document.addEventListener("keydown", e => {
+  const tr = e.target.closest && e.target.closest("tr[data-model]");
+  if (tr && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); tr.click(); }
+});
+
+function setSearch(v) {
+  state.q = v;
+  $("#search").value = v;
+  $("#search-box").classList.toggle("has", !!v);
+  renderBrandTabs(); renderMain();
+}
+$("#search").addEventListener("input", e => setSearch(e.target.value));
+$("#search-clear").addEventListener("click", () => { setSearch(""); $("#search").focus(); });
+$("#sort").addEventListener("change", e => { state.sort = e.target.value; renderMain(); });
+$("#refresh").addEventListener("click", load);
+
+state.sort = $("#sort").value;
+if ($("#search").value) setSearch($("#search").value);
+
+let rt;
+window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(drawChart, 120); });
+
+load();
+</script>
+</body>
+</html>
